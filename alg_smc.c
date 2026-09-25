@@ -2,9 +2,10 @@
  * @file alg_smc.c
  * @brief 
  * @note 尚不完整，目前主要完善指数趋近律下的推导
- * @note 物理模型固定为Jθ¨=ku+d(t), J为转动惯量，θ¨为角加速度，ku为扭矩，若电机直接输出扭矩则k为1
+ * @note 物理模型固定为Jθ¨=u/k+d(t), J为转动惯量，θ¨为角加速度，u/k为扭矩，若电机直接输出扭矩则k为1
  * @note 仅采用一阶滑模面，s=θ˙+cθ，c为滑模面系数
-*/
+ * @note 使用弧度制！！！
+ */
 
 
 #include "alg_smc.h"
@@ -21,6 +22,8 @@ smc_instance_t *smc_register(smc_init_t *smc_init)
     if (smc_instance == NULL)
         return NULL;
     memset(smc_instance, 0, sizeof(smc_instance_t));
+    smc_instance->frequency = smc_init->frequency;
+
     smc_instance->J = smc_init->J;
     smc_instance->k_c = smc_init->k_c;
     smc_instance->u_max = smc_init->u_max;
@@ -97,51 +100,53 @@ float smc_switch_control(const smc_instance_t *smc_instance, float s)
 /**
  * @brief 滑模控制器计算
  * @param smc_instance 滑模控制器实例
- * @param angle_now 当前角度
+ * @param actual_angle 当前角度
  * @param target_angle 目标角度
  * @return 控制输入 u
  * @note 循环中调用此函数
  */
-float smc_tick_calculate(smc_instance_t *smc_instance, float angle_now, float target_angle)
+float smc_tick_calculate(smc_instance_t *smc_instance, float actual_angle, float actual_angle_speed, float target_angle)
 {
-    smc_instance->angle_last = smc_instance->angle_now;
-    smc_instance->angle_now = angle_now;
-    smc_instance->angle_dot = smc_instance->angle_now - smc_instance->angle_last;
+    smc_instance->actual_angle_last = smc_instance->actual_angle;
+    smc_instance->actual_angle = actual_angle;
+    smc_instance->actual_angle_dot = smc_instance->actual_angle - smc_instance->actual_angle_last;
+
+    //速度检查，以免差分值与实际值相差过大影响准确度
+    if (fabsf(smc_instance->actual_angle_dot*1000 - actual_angle_speed)/ fabsf(actual_angle_speed) > 0.5)
+        smc_instance->actual_angle_dot = actual_angle_speed/1000.0f;
 
     smc_instance->target_angle_last = smc_instance->target_angle;
     smc_instance->target_angle = target_angle;
     smc_instance->target_angle_ddot = (smc_instance->target_angle - smc_instance->target_angle_last) - smc_instance->target_angle_dot;
     smc_instance->target_angle_dot = smc_instance->target_angle - smc_instance->target_angle_last;
 
-
     smc_instance->error_last = smc_instance->error;
-    smc_instance->error = smc_instance->angle_now - smc_instance->target_angle;
-    smc_instance->error_dot = smc_instance->angle_dot - smc_instance->target_angle_dot;
+    smc_instance->error = smc_instance->actual_angle - smc_instance->target_angle;
+    smc_instance->error_dot = smc_instance->actual_angle_dot - smc_instance->target_angle_dot;
 
     if (fabsf(smc_instance->error) < smc_instance->error_eps) {
         smc_instance->u = 0;
         return smc_instance->u;
     }
 
-    float error_qp;
     if (smc_instance->error < 0)
-		error_qp = -pow(fabsf(smc_instance->error), smc_instance->qp);
+		smc_instance->error_qp = -pow(fabsf(smc_instance->error), smc_instance->qp);
 	else
-		error_qp = pow(fabsf(smc_instance->error), smc_instance->qp);
+		smc_instance->error_qp = pow(fabsf(smc_instance->error), smc_instance->qp);
     
-    smc_instance->s = smc_instance->error_dot + smc_instance->c * error_qp;
+    smc_instance->s = smc_instance->error_dot + smc_instance->c * smc_instance->error_qp;
     //趋近律
     smc_instance->ds = -smc_instance->k * sat(smc_instance->s, smc_instance->phi) - smc_instance->eps * smc_instance->s;
     smc_instance->u = (smc_instance->target_angle_ddot - 
-                       smc_instance->c * smc_instance->qp * smc_instance->error_dot * error_qp / smc_instance->error +
+                       smc_instance->c * smc_instance->qp * smc_instance->error_dot * smc_instance->error_qp / smc_instance->error +
                        smc_instance->ds) * smc_instance->J * smc_instance->k_c;
 
     //奇异点附近使用普通滑模
-    if (abs(smc_instance->error) < 1) {
+    if (abs(smc_instance->error) < 0.05) {
         smc_instance->s = smc_instance->error_dot + smc_instance->c * smc_instance->error;
-        smc_instance->ds = -smc_instance->k * sat(smc_instance->s, smc_instance->phi) - smc_instance->eps * smc_instance->s;
+        smc_instance->ds = - smc_instance->k * sat(smc_instance->s, smc_instance->phi) - smc_instance->eps * smc_instance->s;
         smc_instance->u = (smc_instance->target_angle_ddot - 
-                           smc_instance->c *  smc_instance->error_dot +
+                           smc_instance->c * smc_instance->error_dot +
                            smc_instance->ds) * smc_instance->J * smc_instance->k_c;
     }
 

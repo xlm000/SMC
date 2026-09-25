@@ -29,6 +29,8 @@ typedef enum {
 } smc_reach_t;
 
 typedef struct {
+    float frequency;           // 控制频率(计算频率，一般freertos为1000Hz)(暂无用)
+
     float J;                   // 转动惯量
     float k_c;                 // 控制输入系数，k_c*u为扭矩，若电机直接输出扭矩则k为1
     float u_max;               // 控制输入上限
@@ -49,6 +51,8 @@ typedef struct {
 } smc_init_t;
 
 typedef struct {
+    float frequency;           // 控制频率(计算频率)
+
     float J;                   // 转动惯量
     float u;                   // 控制输入
     float k_c;                 // 控制输入系数，k_c*u为扭矩，若电机直接输出扭矩则k为1
@@ -74,20 +78,21 @@ typedef struct {
     float target_angle_dot;
     float target_angle_ddot;
 
-    float angle_now;
-    float angle_last;
-    float angle_dot;
-    float angle_ddot;
+    float actual_angle_now;
+    float actual_angle_last;
+    float actual_angle_dot;
+    float actual_angle_ddot;
 
     float error;
     float error_last;
     float error_dot;
+    float error_qp;
 } smc_instance_t;
 
 int8_t sgn(float s);
 float sat(float s, float phi);
 smc_instance_t *smc_register(smc_init_t *smc_init);
 float smc_switch_control(const smc_instance_t *smc_instance, float s);
-float smc_tick_calculate(smc_instance_t *smc_instance, float angle_now, float target_angle);
+float smc_tick_calculate(smc_instance_t *smc_instance, float actual_angle, float actual_angle_speed, float target_angle);
 
 #endif
