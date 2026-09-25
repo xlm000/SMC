@@ -78,7 +78,7 @@ typedef struct {
     float target_angle_dot;
     float target_angle_ddot;
 
-    float actual_angle_now;
+    float actual_angle;
     float actual_angle_last;
     float actual_angle_dot;
     float actual_angle_ddot;

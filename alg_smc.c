@@ -84,15 +84,15 @@ float smc_switch_control(const smc_instance_t *smc_instance, float s)
     float rho;
     switch (smc_instance->reach_type) {                  /* 1. 趋近律 -> 趋近速度 rho */
     case SMC_REACH_CONST: rho = k; break;
-    case SMC_REACH_EXP:   rho = k + smc_instance->eps * fabs(s); break;
-    case SMC_REACH_POWER: rho = k * pow(fabs(s), smc_instance->alpha); break;
+    case SMC_REACH_EXP:   rho = k + smc_instance->eps * fabsf(s); break;
+    case SMC_REACH_POWER: rho = k * pow(fabsf(s), smc_instance->alpha); break;
     default: return 0;
     }
     switch (smc_instance->switch_type) {                     /* 2. 切换函数 -> u_sw */
     case SMC_SWITCH_SIGN:    return -rho * ((s > 0) - (s < 0));
     case SMC_SWITCH_SAT:     return -rho * sat(s, smc_instance->phi);
     case SMC_SWITCH_TANH:    return -rho * tanh(s / smc_instance->phi);
-    case SMC_SWITCH_SIGMOID: return -rho * (s / (fabs(s) + smc_instance->phi));
+    case SMC_SWITCH_SIGMOID: return -rho * (s / (fabsf(s) + smc_instance->phi));
     }
     return 0;
 }
@@ -142,7 +142,7 @@ float smc_tick_calculate(smc_instance_t *smc_instance, float actual_angle, float
                        smc_instance->ds) * smc_instance->J * smc_instance->k_c;
 
     //奇异点附近使用普通滑模
-    if (abs(smc_instance->error) < 0.05) {
+    if (fabsf(smc_instance->error) < 0.05) {
         smc_instance->s = smc_instance->error_dot + smc_instance->c * smc_instance->error;
         smc_instance->ds = - smc_instance->k * sat(smc_instance->s, smc_instance->phi) - smc_instance->eps * smc_instance->s;
         smc_instance->u = (smc_instance->target_angle_ddot - 
