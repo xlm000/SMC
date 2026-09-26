@@ -40,6 +40,7 @@ smc_instance_t *smc_register(smc_init_t *smc_init)
     
     smc_instance->qp = smc_init->q / smc_init->p;
 
+    smc_instance->error_eps = smc_init->error_eps;
     smc_instance->phi = smc_init->phi;
     return smc_instance;
 }
