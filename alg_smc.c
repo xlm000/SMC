@@ -121,6 +121,12 @@ float smc_tick_calculate(smc_instance_t *smc_instance, float actual_angle, float
     smc_instance->target_angle_ddot = (smc_instance->target_angle - smc_instance->target_angle_last) - smc_instance->target_angle_dot;
     smc_instance->target_angle_dot = smc_instance->target_angle - smc_instance->target_angle_last;
 
+    //过零保护
+    if (smc_instance->actual_angle - smc_instance->target_angle > 3.1415926f)
+        smc_instance->actual_angle -= 6.2831852f;
+    else if (smc_instance->actual_angle - smc_instance->target_angle < -3.1415926f)
+        smc_instance->actual_angle += 6.2831852f;
+
     smc_instance->error_last = smc_instance->error;
     smc_instance->error = smc_instance->actual_angle - smc_instance->target_angle;
     smc_instance->error_dot = smc_instance->actual_angle_dot - smc_instance->target_angle_dot;
