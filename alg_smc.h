@@ -29,10 +29,10 @@ typedef enum {
 } smc_reach_t;
 
 typedef struct {
-    float frequency;           // 控制频率(计算频率，一般freertos为1000Hz)(暂无用)
+    float frequency;           // 控制频率(计算频率，一般freertos为1000Hz)
 
     float J;                   // 转动惯量
-    float k_c;                 // 控制输入系数，k_c*u为扭矩，若电机直接输出扭矩则k为1
+    float k_c;                 // 控制输入系数，u/k_c为扭矩，若电机直接输出扭矩则k为1
     float u_max;               // 控制输入上限
 
     float c;                   // 滑模面系数
@@ -43,8 +43,8 @@ typedef struct {
     smc_reach_t   reach_type;  // 趋近律类型
     smc_switch_t  switch_type; // 切换函数类型
 
-    int q;                   // 终端滑模指数参数上
-    int p;                   // 终端滑模指数参数下，q、p均为奇数,q<p
+    float q;                   // 终端滑模指数参数上
+    float p;                   // 终端滑模指数参数下，q、p均为奇数,q<p
     
     float error_eps;           // 死区，若误差小于该值则认为已收敛，输出0
     float phi;                 // sat边界层厚度
@@ -55,7 +55,7 @@ typedef struct {
 
     float J;                   // 转动惯量
     float u;                   // 控制输入
-    float k_c;                 // 控制输入系数，k_c*u为扭矩，若电机直接输出扭矩则k为1
+    float k_c;                 // 控制输入系数，u/k_c为扭矩，若电机直接输出扭矩则k为1
     float u_max;               // 控制输入上限
 
     float s;                   // 滑模面
@@ -89,8 +89,8 @@ typedef struct {
     float error_qp;
 } smc_instance_t;
 
-int8_t sgn(float s);
-float sat(float s, float phi);
+static int8_t smc_sgn(float s);
+static float smc_sat(float s, float phi);
 smc_instance_t *smc_register(smc_init_t *smc_init);
 float smc_switch_control(const smc_instance_t *smc_instance, float s);
 float smc_tick_calculate(smc_instance_t *smc_instance, float actual_angle, float actual_angle_speed, float target_angle);
